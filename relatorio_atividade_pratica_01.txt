@@ -1,0 +1,112 @@
+ATIVIDADE PRÁTICA 01 - PROGRAMAÇÃO PARALELA
+
+==================================================
+ETAPA 1 – Implementação sequencial
+==================================================
+
+Três execuções realizadas para N = 100 tarefas:
+- Execução 1: 1,32 s
+- Execução 2: 1,32 s
+- Execução 3: 1,33 s
+
+Tempo médio sequencial (T1): 1,32 s
+
+
+==================================================
+ETAPA 2 – Implementação paralela
+==================================================
+
+Execuções com ProcessPoolExecutor para 2, 4 e 8 processos:
+- 2 processos: 0,80 s
+- 4 processos: 0,46 s
+- 8 processos: 0,40 s
+
+
+==================================================
+ETAPA 3 – Registro dos resultados
+==================================================
+
+Processos | Tempo (s) | Speedup | Eficiência
+--------------------------------------------
+1         | 1,32      | 1,00    | 1,00 (100%)
+2         | 0,80      | 1,65    | 0,82 (82,5%)
+4         | 0,46      | 2,87    | 0,72 (71,7%)
+8         | 0,40      | 3,30    | 0,41 (41,2%)
+
+Fórmulas:
+- Speedup = T1 / Tp
+- Eficiência = Speedup / N
+
+
+==================================================
+ETAPA 4 – Análise dos resultados
+==================================================
+
+1. O speedup obtido foi igual ao número de processos utilizados? Justifique.
+Não. O speedup ideal seria 2 com 2 processos, 4 com 4 e 8 com 8. No teste deu 1,65 com 2 processos e só 3,30 com 8 processos. Isso acontece porque o ganho nunca é 100%: existem partes sequenciais no código e o computador perde tempo criando os processos e trocando dados entre eles.
+
+2. A eficiência permaneceu próxima de 100%? Explique.
+Não, foi caindo conforme aumentamos os processos: 82,5% com 2 processos, 71,7% com 4 e 41,2% com 8. A eficiência mede se cada núcleo novo está sendo bem aproveitado. Com muitos processos, o sistema gasta mais tempo gerenciando as tarefas do que processando de verdade.
+
+3. O que aconteceu com o tempo de execução à medida que a quantidade de processos aumentou?
+O tempo foi diminuindo. Caiu bem de 1 para 2 processos (1,32s para 0,80s) e de 2 para 4 processos (0,80s para 0,46s). Mas de 4 para 8 processos quase não mudou (caiu só de 0,46s para 0,40s).
+
+4. Em algum momento o ganho de desempenho começou a diminuir?
+Sim, a partir de 4 processos. A passagem de 1 para 2 processos economizou 0,52s, enquanto passar de 4 para 8 processos (dobrando os núcleos) economizou apenas 0,06s.
+
+5. Quais possíveis fontes de overhead estão presentes nessa aplicação?
+- Criação dos processos: no Windows, o Python precisa abrir novas instâncias do interpretador (spawn), o que é pesado.
+- Comunicação/serialização: os dados precisam ser convertidos em bytes (pickle) para serem enviados aos workers e recebidos de volta.
+- Coleta de resultados: o processo principal precisa esperar todos e juntar as respostas.
+- Sistema operacional: gerenciamento de concorrência, troca de contexto e disputa pelo cache e memória.
+
+
+==================================================
+ETAPA 5 – Experimento de granularidade
+==================================================
+
+Resultados obtidos:
+- 20 tarefas:  Seq: 0,27s | 2p: 0,25s (Sp: 1,08) | 4p: 0,18s (Sp: 1,44) | 8p: 0,21s (Sp: 1,29)
+- 100 tarefas: Seq: 1,33s | 2p: 0,78s (Sp: 1,70) | 4p: 0,47s (Sp: 2,81) | 8p: 0,36s (Sp: 3,65)
+- 500 tarefas: Seq: 7,14s | 2p: 3,59s (Sp: 1,98) | 4p: 1,92s (Sp: 3,71) | 8p: 1,28s (Sp: 5,56)
+
+1. Como a quantidade de tarefas influencia o aproveitamento dos processos?
+Quanto mais tarefas, melhor o aproveitamento. Com 20 tarefas a execução foi tão rápida que o custo de iniciar os processos pesou demais (com 8 processos a eficiência foi só de 16%). Já com 500 tarefas o volume de cálculo compensou o custo inicial, com a eficiência chegando a quase 100% em 2 processos e speedup de 5,56 com 8 processos.
+
+2. Tarefas muito pequenas podem prejudicar o desempenho? Por quê?
+Sim. Se a tarefa for rápida demais, o tempo de mandar os dados e receber o resultado é maior do que o tempo do próprio cálculo. No teste com 20 tarefas, usar 8 processos foi mais lento (0,21s) do que usar 4 processos (0,18s).
+
+3. O que acontece quando o custo de distribuir e gerenciar uma tarefa se torna comparável ao custo do próprio processamento?
+O paralelismo deixa de compensar e o programa pode ficar mais lento que o sequencial, porque a máquina gasta mais tempo gerenciando as tarefas do que executando o código útil.
+
+4. Como os resultados se relacionam com o conceito de granularidade?
+- Granularidade fina (20 tarefas): pouco processamento para muita comunicação/overhead. O resultado foi ruim.
+- Granularidade grossa (500 tarefas): bastante processamento para pouca comunicação. O paralelismo compensou muito.
+Isso mostra que tarefas com granularidade média ou grossa aproveitam muito melhor o paralelismo.
+
+
+==================================================
+ETAPA 6 – Desafio de balanceamento de carga
+==================================================
+
+Resultados com tarefas de pesos diferentes (múltiplos de 10 fazem 5x mais iterações):
+- Sequencial: 1,93s
+- 2 processos: 1,12s (Speedup: 1,73 | Eficiência: 86,3%)
+- 4 processos: 0,65s (Speedup: 2,99 | Eficiência: 74,8%)
+- 8 processos: 0,53s (Speedup: 3,62 | Eficiência: 45,3%)
+
+1. Todos os processos terminam aproximadamente no mesmo momento?
+Não. Como os números múltiplos de 10 fazem 1.500.000 iterações e os outros fazem 300.000, os processos que pegam esses números mais pesados demoram bem mais para acabar do que os que pegam tarefas normais.
+
+2. O balanceamento de carga foi adequado? Justifique.
+Não foi adequado, houve desbalanceamento. As tarefas foram divididas em blocos fixos e alguns processos ficaram com muito mais trabalho. Como o tempo total é determinado pelo último processo que termina, os mais rápidos ficam esperando os mais lentos.
+
+3. É possível que alguns processos fiquem ociosos enquanto outros ainda executam tarefas?
+Sim. Quem pega as tarefas leves termina antes e fica parado (ocioso), esperando os processos com as tarefas pesadas acabarem para poder juntar os resultados.
+
+4. Como uma estratégia de distribuição dinâmica poderia melhorar o balanceamento?
+Com distribuição dinâmica (como uma fila compartilhada onde cada processo pega uma tarefa assim que termina a anterior), quem pegou tarefa leve não fica esperando parado: ele já pega a próxima tarefa livre, mantendo todos os núcleos trabalhando até o fim.
+
+5. Dividir o trabalho em tarefas menores poderia melhorar a distribuição da carga? Qual seria o impacto no overhead?
+Dividir em tarefas menores melhora o balanceamento porque evita que um processo fique preso em uma tarefa gigante enquanto os outros ficam sem o que fazer.
+O impacto no overhead é que, se dividir demais em tarefinhas minúsculas, aumenta muito a comunicação e troca de dados entre os processos, o que pode acabar deixando o programa mais lento. É preciso achar um meio-termo.
