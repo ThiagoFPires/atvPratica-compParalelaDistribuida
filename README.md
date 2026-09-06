@@ -1,6 +1,6 @@
 # Atividade Prática 01 - Programação Paralela
 
-Repositório com a implementação prática e análise experimental de computação concorrente e paralela em Python utilizando `concurrent.futures.ProcessPoolExecutor`.
+Atividade Realizada por Thiago e Isabella
 
 ---
 
